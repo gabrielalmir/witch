@@ -8,6 +8,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"golang.design/x/clipboard"
 )
 
 type Repo struct {
@@ -26,6 +27,7 @@ type model struct {
 	cursor       int
 	page         int
 	itemsPerPage int
+	selectedRepo Repo
 }
 
 func (m model) Init() tea.Cmd {
@@ -37,15 +39,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
-			repos, err := searchRepos(m.query)
-			if err != nil {
-				m.status = "Error fetching repositories: " + err.Error()
+			if m.query == "" {
+				link := fmt.Sprintf("github.com/%s/%s", m.selectedRepo.Owner.Login, m.selectedRepo.Name)
+				err := copyToClipboard(link)
+				if err != nil {
+					m.status = "Error copying to clipboard: " + err.Error()
+				} else {
+					m.status = "GitHub link copied to clipboard!"
+				}
 			} else {
-				m.repos = repos
-				m.status = fmt.Sprintf("Results for: %s", m.query)
-				m.query = ""
-				m.cursor = 0
-				m.page = 0
+				repos, err := searchRepos(m.query)
+				if err != nil {
+					m.status = "Error fetching repositories: " + err.Error()
+				} else {
+					m.repos = repos
+					m.status = fmt.Sprintf("Results for: %s", m.query)
+					m.query = ""
+					m.cursor = 0
+					m.page = 0
+				}
 			}
 		case "ctrl+c", "q", "esc":
 			fmt.Println("Happy Halloween! 🎃")
@@ -81,6 +93,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.query += msg.String()
 		}
 	}
+
+	if m.getCurrentPageItems() != nil && len(m.getCurrentPageItems()) > 0 {
+		m.selectedRepo = m.getCurrentPageItems()[m.cursor]
+	}
+
 	return m, nil
 }
 
@@ -125,6 +142,16 @@ func main() {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
+}
+
+func copyToClipboard(s string) error {
+	err := clipboard.Init()
+	if err != nil {
+		return err
+	}
+
+	clipboard.Write(clipboard.FmtText, []byte(s))
+	return nil
 }
 
 func searchRepos(query string) ([]Repo, error) {
