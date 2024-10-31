@@ -13,7 +13,7 @@ Witch is a command-line application that allows you to search for trending repos
 To install Witch, you need to have [Go](https://golang.org/dl/) installed on your machine. Then, you can clone the repository and build the application:
 
 ```sh
-git clone https://github.com/yourusername/witch.git
+git clone https://github.com/gabrielalmir/witch.git
 cd witch
 go build
 ```
