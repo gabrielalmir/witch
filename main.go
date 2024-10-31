@@ -86,7 +86,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	s := "Welcome to Witch! 🧙‍♀️\n\n"
-	s += "Find 'which' repositories are trending on GitHub!\n"
+	s += "Find 'witch' repositories are trending on GitHub!\n"
 	s += "Enter a keyword and press Enter:\n\n"
 	s += fmt.Sprintf("Current search: %s\n\n", m.query)
 	s += m.status + "\n\n"
