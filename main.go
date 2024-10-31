@@ -23,30 +23,38 @@ func (m model) Init() tea.Cmd {
 	return nil
 }
 
+func handleSearchRepos(m *model) {
+	repos, err := services.SearchRepos(m.query)
+	if err != nil {
+		m.status = "Error fetching repositories: " + err.Error()
+	} else {
+		m.repos = repos
+		m.status = fmt.Sprintf("Results for: %s", m.query)
+		m.query = ""
+		m.cursor = 0
+		m.page = 0
+	}
+}
+
+func handleClipboardCopy(m *model) {
+	link := fmt.Sprintf("github.com/%s/%s", m.selectedRepo.Owner.Login, m.selectedRepo.Name)
+	err := services.CopyToClipboard(link)
+	if err != nil {
+		m.status = "Error copying to clipboard: " + err.Error()
+	} else {
+		m.status = "GitHub link copied to clipboard!"
+	}
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "enter":
 			if m.query == "" {
-				link := fmt.Sprintf("github.com/%s/%s", m.selectedRepo.Owner.Login, m.selectedRepo.Name)
-				err := services.CopyToClipboard(link)
-				if err != nil {
-					m.status = "Error copying to clipboard: " + err.Error()
-				} else {
-					m.status = "GitHub link copied to clipboard!"
-				}
+				handleClipboardCopy(&m)
 			} else {
-				repos, err := services.SearchRepos(m.query)
-				if err != nil {
-					m.status = "Error fetching repositories: " + err.Error()
-				} else {
-					m.repos = repos
-					m.status = fmt.Sprintf("Results for: %s", m.query)
-					m.query = ""
-					m.cursor = 0
-					m.page = 0
-				}
+				handleSearchRepos(&m)
 			}
 		case "ctrl+c", "q", "esc":
 			fmt.Println("Happy Halloween! 🎃")
