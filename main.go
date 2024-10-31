@@ -1,33 +1,22 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"golang.design/x/clipboard"
+	"github.com/gabrielalmir/witch/models"
+	"github.com/gabrielalmir/witch/services"
 )
 
-type Repo struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Stars       int    `json:"stargazers_count"`
-	Owner       struct {
-		Login string `json:"login"`
-	} `json:"owner"`
-}
-
 type model struct {
-	repos        []Repo
+	repos        []models.Repo
 	query        string
 	status       string
 	cursor       int
 	page         int
 	itemsPerPage int
-	selectedRepo Repo
+	selectedRepo models.Repo
 }
 
 func (m model) Init() tea.Cmd {
@@ -41,14 +30,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.query == "" {
 				link := fmt.Sprintf("github.com/%s/%s", m.selectedRepo.Owner.Login, m.selectedRepo.Name)
-				err := copyToClipboard(link)
+				err := services.CopyToClipboard(link)
 				if err != nil {
 					m.status = "Error copying to clipboard: " + err.Error()
 				} else {
 					m.status = "GitHub link copied to clipboard!"
 				}
 			} else {
-				repos, err := searchRepos(m.query)
+				repos, err := services.SearchRepos(m.query)
 				if err != nil {
 					m.status = "Error fetching repositories: " + err.Error()
 				} else {
@@ -122,7 +111,7 @@ func (m model) View() string {
 	return s
 }
 
-func (m model) getCurrentPageItems() []Repo {
+func (m model) getCurrentPageItems() []models.Repo {
 	start := m.page * m.itemsPerPage
 	end := start + m.itemsPerPage
 	if end > len(m.repos) {
@@ -142,34 +131,4 @@ func main() {
 		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
-}
-
-func copyToClipboard(s string) error {
-	err := clipboard.Init()
-	if err != nil {
-		return err
-	}
-
-	clipboard.Write(clipboard.FmtText, []byte(s))
-	return nil
-}
-
-func searchRepos(query string) ([]Repo, error) {
-	apiURL := fmt.Sprintf("https://api.github.com/search/repositories?q=%s+fork:false&sort=stars&order=desc&per_page=50", url.QueryEscape(query))
-
-	resp, err := http.Get(apiURL)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var result struct {
-		Items []Repo `json:"items"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	return result.Items, nil
 }
